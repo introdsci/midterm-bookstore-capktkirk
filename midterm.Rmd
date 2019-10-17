@@ -46,7 +46,7 @@ long_sales <- u_sales %>% gather(date, amount, 2:23)
 All the data has been placed into discrete subsections that we can evaluate more easily now, however the row under inv_cat labeled "health, beauty, and fitness" is much to long of a name to be referencing over and over again in searches so I'm going to trim it down to a broad term; lifestyle.
 
 ```{r}
-long_sales$inv_cat[long_sales$inv_cat="health, beauty, and fitness"] <- "lifestyle"
+long_sales$inv_cat[long_sales$inv_cat == "health, beauty, and fitness"] <- "lifestyle"
 ```
 
 We've cleaned up the over-all sales data, but not the specific register data. Upon inspecting the u_reg dataframe we can see that there is a customer dimension, as well as a purchase dimension. First I want to isolate the customer information. 
@@ -69,6 +69,35 @@ At this point we want to do something with the visualization of the data. We nee
 library("ggplot2")
 ```
 
+Now, because I know that I want to look at over-all sale data per customer I am going to create a new dataframe called cus_tots for customer totals. We'll also clean up the data a little for easier parsing and human reading.
+
 ```{r}
-ggplot(purchase, aes())
+cus_tots <- aggregate(purchase$cost, by=list(cust_id = purchase$cust_id), FUN=sum)
+colnames(cus_tots)[colnames(cus_tots) == "x"] <- "total"
+cus_tots$cust_id[cus_tots$cust_id == "--"] <- "NULL"
 ```
+
+Now we can evaluate data concerning the customers spending habits because we've focused down onto the customer and the totals that they have individually spent.
+
+```{r}
+ggplot(cus_tots, aes(cus_tots$cust_id, cus_tots$total, label=cus_tots$total)) + geom_bar(stat = "identity", fill = "lightblue") + scale_x_discrete("Customer ID") + scale_y_continuous("Spent") + theme(axis.text.x = element_text(angle = 90, vjust = 0.5)) + geom_text(size = 3, position = position_stack(vjust = .9))
+```
+
+We can do this instead with the specific sections of the bookstore to gather data about what the highest selling categories are. We are going to group by the category in long_sales and aggregate the sum of the sales.
+
+```{r}
+cat_tots <- aggregate(long_sales$amount, by=list(category = long_sales$inv_cat), FUN=sum)
+```
+
+Just like with the customer totals, the summed aggreagate gives us an "x" that we need to rename into another variable, let's go with the same as we did previously, "total".
+```{r}
+colnames(cat_tots)[colnames(cat_tots) == "x"] <- "total"
+```
+
+With that done, we can now do the exact same thing to this as we did to the purchases by customer.
+
+```{r}
+ggplot(cat_tots, aes(cat_tots$category, cat_tots$total, label=cat_tots$total)) + geom_bar(stat = "identity", fill = "lightblue") + scale_x_discrete("Customer ID") + scale_y_continuous("Spent") + theme(axis.text.x = element_text(angle = 90, vjust = 0.5)) + geom_text(size = 3, position = position_stack(vjust = 0.9))
+```
+
+Using this data we can draw some conclusions, we see that there are affiliated and unaffiliated groups, those who get discounts, and those who don't. We see a lot of return purchases from a few individuals as well as electronics and textbooks being the largest sellers. We can infer that this is probably a student store on a college campus and can further interrogate the data for more correlations to this.
