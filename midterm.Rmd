@@ -1,0 +1,74 @@
+---
+author: "Kyle T. Kirk"
+title: "Midterm Notebook"
+date: "October 15th, 2019"
+output: html_notebook
+---
+
+We have two csv files that we need to work with, the first thing we must do is to bring in the libraries that we will be using and import the data that we will be working on. We're using the tidyverse and related libraries to make the data *"Tidy Data"*.
+
+```{r}
+suppressMessages(library("tidyverse"))
+suppressMessages(library("tidyr"))
+suppressMessages(library("dplyr"))
+suppressMessages(library("readr"))
+suppressMessages(library("stringr"))
+```
+
+Now we're going to import the dataframes we're going to work on.
+
+```{r}
+u_reg <- read_csv("register.csv")
+u_sales <- read_csv("sales.csv")
+```
+
+With the libraries installed and data loaded, we need to rename the column headers for better readability and easier coding. We will start with u_reg.
+
+```{r}
+colnames(u_reg)[colnames(u_reg) == "is the customer a student/faculty/staff (0) or unaffiliated (1)"] <- "aff"
+colnames(u_reg)[colnames(u_reg) == "customer id"] <- "c_id"
+colnames(u_reg)[colnames(u_reg) == "contact preference"] <- "con_pref"
+colnames(u_reg)[colnames(u_reg) == "preferred customer discount"] <- "discount"
+```
+
+The next data set only has a single column where we need to simplify the name.
+
+```{r}
+colnames(u_sales)[colnames(u_sales) == "category of inventory goods"] <- "inv_cat"
+```
+
+The dataframe of u_sales is much too wide, we have a date value that can be used to fold the data into a longer list.
+
+```{r}
+long_sales <- u_sales %>% gather(date, amount, 2:23)
+```
+
+All the data has been placed into discrete subsections that we can evaluate more easily now, however the row under inv_cat labeled "health, beauty, and fitness" is much to long of a name to be referencing over and over again in searches so I'm going to trim it down to a broad term; lifestyle.
+
+```{r}
+long_sales$inv_cat[long_sales$inv_cat="health, beauty, and fitness"] <- "lifestyle"
+```
+
+We've cleaned up the over-all sales data, but not the specific register data. Upon inspecting the u_reg dataframe we can see that there is a customer dimension, as well as a purchase dimension. First I want to isolate the customer information. 
+
+```{r}
+aff_cust <- distinct(tibble(cust_id = u_reg$c_id, contact_pref = u_reg$con_pref, news_get = u_reg$newsletter))
+```
+
+This gives us a view of all the customers who made purchases and isolates it down to customers based on their customer id. 
+
+Now we can focus on the purchases and strip out all the data pertaining to the customer other than the customer id.
+
+```{r}
+purchase <- tibble(purchase = u_reg$purchase, item = u_reg$item, charge = u_reg$charge, cost = u_reg$price, cust_id = u_reg$c_id, aff = u_reg$aff)
+```
+
+At this point we want to do something with the visualization of the data. We need to access the ggplot2 library.
+
+```{r}
+library("ggplot2")
+```
+
+```{r}
+ggplot(purchase, aes())
+```
