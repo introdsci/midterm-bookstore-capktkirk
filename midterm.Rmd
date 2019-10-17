@@ -33,7 +33,7 @@ colnames(u_reg)[colnames(u_reg) == "contact preference"] <- "con_pref"
 colnames(u_reg)[colnames(u_reg) == "preferred customer discount"] <- "discount"
 ```
 
-The next data set only has a single column where we need to simplify the name.
+The next data set only has a single column where we need to simplify the name. Instead of 'category of inventory goods' we will change it to 'inv_cat" for a shortening of inventory category.
 
 ```{r}
 colnames(u_sales)[colnames(u_sales) == "category of inventory goods"] <- "inv_cat"
@@ -138,7 +138,7 @@ mon_tots$month[mon_tots$month == "10-2019"] <- "201910"
 ```
 
 
-We've arranged the data into a sortable manner, and this gives us the ability to create a plot that we can look at trends on.
+We've arranged the data into a sortable order, and this gives us the ability to create a plot that we can look at trends on based on time.
 
 
 ```{r}
