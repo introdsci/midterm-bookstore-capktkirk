@@ -1,0 +1,148 @@
+---
+title: "Midterm Notebook"
+author: "Kyle T. Kirk"
+date: "October 15th, 2019"
+output:
+  html_document:
+    df_print: paged
+---
+
+We have two csv files that we need to work with, the first thing we must do is to bring in the libraries that we will be using and import the data that we will be working on. We're using the tidyverse and related libraries to make the data *"Tidy Data"*.
+
+```{r}
+suppressMessages(library("tidyverse"))
+suppressMessages(library("tidyr"))
+suppressMessages(library("dplyr"))
+suppressMessages(library("readr"))
+suppressMessages(library("stringr"))
+```
+
+Now we're going to import the dataframes we're going to work on.
+
+```{r}
+u_reg <- read_csv("register.csv")
+u_sales <- read_csv("sales.csv")
+```
+
+With the libraries installed and data loaded, we need to rename the column headers for better readability and easier coding. We will start with u_reg.
+
+```{r}
+colnames(u_reg)[colnames(u_reg) == "is the customer a student/faculty/staff (0) or unaffiliated (1)"] <- "aff"
+colnames(u_reg)[colnames(u_reg) == "customer id"] <- "c_id"
+colnames(u_reg)[colnames(u_reg) == "contact preference"] <- "con_pref"
+colnames(u_reg)[colnames(u_reg) == "preferred customer discount"] <- "discount"
+```
+
+The next data set only has a single column where we need to simplify the name. Instead of 'category of inventory goods' we will change it to 'inv_cat" for a shortening of inventory category.
+
+```{r}
+colnames(u_sales)[colnames(u_sales) == "category of inventory goods"] <- "inv_cat"
+```
+
+The dataframe of u_sales is much too wide, we have a date value that can be used to fold the data into a longer list.
+
+```{r}
+long_sales <- u_sales %>% gather(date, amount, 2:23)
+```
+
+All the data has been placed into discrete subsections that we can evaluate more easily now, however the row under inv_cat labeled "health, beauty, and fitness" is much to long of a name to be referencing over and over again in searches so I'm going to trim it down to a broad term; lifestyle.
+
+```{r}
+long_sales$inv_cat[long_sales$inv_cat == "health, beauty, and fitness"] <- "lifestyle"
+```
+
+We've cleaned up the over-all sales data, but not the specific register data. Upon inspecting the u_reg dataframe we can see that there is a customer dimension, as well as a purchase dimension. First I want to isolate the customer information. 
+
+```{r}
+aff_cust <- distinct(tibble(cust_id = u_reg$c_id, contact_pref = u_reg$con_pref, news_get = u_reg$newsletter))
+```
+
+This gives us a view of all the customers who made purchases and isolates it down to customers based on their customer id. 
+
+Now we can focus on the purchases and strip out all the data pertaining to the customer other than the customer id.
+
+```{r}
+purchase <- tibble(purchase = u_reg$purchase, item = u_reg$item, charge = u_reg$charge, cost = u_reg$price, cust_id = u_reg$c_id, aff = u_reg$aff)
+```
+
+At this point we want to do something with the visualization of the data. We need to access the ggplot2 library.
+
+```{r}
+library("ggplot2")
+```
+
+Now, because I know that I want to look at over-all sale data per customer I am going to create a new dataframe called cus_tots for customer totals. We'll also clean up the data a little for easier parsing and human reading.
+
+```{r}
+cus_tots <- aggregate(purchase$cost, by=list(cust_id = purchase$cust_id), FUN=sum)
+colnames(cus_tots)[colnames(cus_tots) == "x"] <- "total"
+cus_tots$cust_id[cus_tots$cust_id == "--"] <- "NULL"
+```
+
+Now we can evaluate data concerning the customers spending habits because we've focused down onto the customer and the totals that they have individually spent.
+
+```{r}
+ggplot(cus_tots, aes(cus_tots$cust_id, cus_tots$total, label=cus_tots$total)) + geom_bar(stat = "identity", fill = "lightblue") + scale_x_discrete("Customer ID") + scale_y_continuous("Spent") + theme(axis.text.x = element_text(angle = 90, vjust = 0.5)) + geom_text(size = 3, position = position_stack(vjust = .9))
+```
+
+We can do this instead with the specific sections of the bookstore to gather data about what the highest selling categories are. We are going to group by the category in long_sales and aggregate the sum of the sales.
+
+```{r}
+cat_tots <- aggregate(long_sales$amount, by=list(category = long_sales$inv_cat), FUN=sum)
+```
+
+Just like with the customer totals, the summed aggreagate gives us an "x" that we need to rename into another variable, let's go with the same as we did previously, "total".
+```{r}
+colnames(cat_tots)[colnames(cat_tots) == "x"] <- "total"
+```
+
+With that done, we can now do the exact same thing to this as we did to the purchases by customer.
+
+```{r}
+ggplot(cat_tots, aes(cat_tots$category, cat_tots$total, label=cat_tots$total)) + geom_bar(stat = "identity", fill = "lightblue") + scale_x_discrete("Customer ID") + scale_y_continuous("Spent") + theme(axis.text.x = element_text(angle = 90, vjust = 0.5)) + geom_text(size = 3, position = position_stack(vjust = 0.9))
+```
+
+Using this data we can draw some conclusions, we see that there are affiliated and unaffiliated groups, those who get discounts, and those who don't. We see a lot of return purchases from a few individuals as well as electronics and textbooks being the largest sellers. We can infer that this is probably a student store on a college campus and can further interrogate the data for more correlations to this. We can look further into this data with a trend analysis of when (date wise) the most sales were happening.
+
+```{r}
+mon_tots <- aggregate(long_sales$amount, by=list(category = long_sales$date), FUN=sum)
+colnames(mon_tots)[colnames(mon_tots) == "x"] <- "total"
+colnames(mon_tots)[colnames(mon_tots) == "category"] <- "month"
+```
+
+We've aggregated the months sales and discarded any data other than amount per month. Now we can do a plot that shows us the change over time. But, we run into a problem now. The date order will end up forcing the months together when sorted. This isn't going to work! We need to rearrange the date order and remove the space.
+
+```{r}
+mon_tots$month[mon_tots$month == "1-2018"] <- "201801"
+mon_tots$month[mon_tots$month == "2-2018"] <- "201802"
+mon_tots$month[mon_tots$month == "3-2018"] <- "201803"
+mon_tots$month[mon_tots$month == "4-2018"] <- "201804"
+mon_tots$month[mon_tots$month == "5-2018"] <- "201805"
+mon_tots$month[mon_tots$month == "6-2018"] <- "201806"
+mon_tots$month[mon_tots$month == "7-2018"] <- "201807"
+mon_tots$month[mon_tots$month == "8-2018"] <- "201808"
+mon_tots$month[mon_tots$month == "9-2018"] <- "201809"
+mon_tots$month[mon_tots$month == "10-2018"] <- "201810"
+mon_tots$month[mon_tots$month == "11-2018"] <- "201811"
+mon_tots$month[mon_tots$month == "12-2018"] <- "201812"
+mon_tots$month[mon_tots$month == "1-2019"] <- "201901"
+mon_tots$month[mon_tots$month == "2-2019"] <- "201902"
+mon_tots$month[mon_tots$month == "3-2019"] <- "201903"
+mon_tots$month[mon_tots$month == "4-2019"] <- "201904"
+mon_tots$month[mon_tots$month == "5-2019"] <- "201905"
+mon_tots$month[mon_tots$month == "6-2019"] <- "201906"
+mon_tots$month[mon_tots$month == "7-2019"] <- "201907"
+mon_tots$month[mon_tots$month == "8-2019"] <- "201908"
+mon_tots$month[mon_tots$month == "9-2019"] <- "201909"
+mon_tots$month[mon_tots$month == "10-2019"] <- "201910"
+```
+
+
+We've arranged the data into a sortable order, and this gives us the ability to create a plot that we can look at trends on based on time.
+
+
+```{r}
+ggplot(mon_tots, aes(mon_tots$month, mon_tots$total, label=mon_tots$total)) + geom_bar(stat = "identity", fill = "lightblue") + scale_x_discrete("Monthly Sales") + scale_y_continuous("Spent") + theme(axis.text.x = element_text(angle = 90, vjust = 0.5)) + geom_text(size = 3, position = position_stack(vjust = 0.9))
+```
+
+Given that the months where purchasing is the highest are both August of 2018 and August of 2019 it leads me to believe that this is indeed a student store. With the decline in purchasing around the months where school is not in session. Using this data, as well as further models of specific item ID's the owner of this store could more readily turn inventory into an automatic process based on the month of the year or the typical purchases at the beginning of a school semester.
